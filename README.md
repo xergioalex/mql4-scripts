@@ -1,2 +1,2 @@
-# mq4-scripts
-MQ4 scripts to allow automate trading forex
+# mql4-scripts
+MQL4 scripts to allow automate trading forex
