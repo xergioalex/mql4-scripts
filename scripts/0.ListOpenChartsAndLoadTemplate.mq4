@@ -46,7 +46,7 @@ void OnStart() {
     Alert("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal);
     
     if (chartInfo[i].indicatorsTotal >= 3) {
-       // Cargar la plantilla con el mismo nombre que el símbolo
+       // Load the template with the same name as the symbol
        string templateName = chartInfo[i].symbol + ".tpl";
        if (ChartApplyTemplate(chartInfo[i].chartID , templateName)) {
          Alert("Template ", templateName, " applied successfully to chart ", chartInfo[i].chartID);
