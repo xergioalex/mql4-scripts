@@ -45,6 +45,20 @@ void OnStart() {
         double stopLoss = OrderStopLoss();
         double takeProfit = OrderTakeProfit();
         int orderType = OrderType();
+        
+        // Calculate risk and potential profit in dollars
+        double pipValue = MarketInfo(symbol, MODE_TICKVALUE);
+        double riskDollars = 0;
+        double profitDollars = 0;
+        
+        if (orderType == OP_BUY || orderType == OP_BUYLIMIT || orderType == OP_BUYSTOP) {
+          riskDollars = (price - stopLoss) * lotSize * pipValue;
+          profitDollars = (takeProfit - price) * lotSize * pipValue;
+        } else if (orderType == OP_SELL || orderType == OP_SELLLIMIT || orderType == OP_SELLSTOP) {
+          riskDollars = (stopLoss - price) * lotSize * pipValue;
+          profitDollars = (price - takeProfit) * lotSize * pipValue;
+        }
+        
         string orderTypeStr;
         
         switch(orderType) {
@@ -70,7 +84,7 @@ void OnStart() {
             orderTypeStr = "Unknown";
         }
         
-        Alert("Order #", OrderTicket(), ": Type = ", orderTypeStr, ", Price = ", price, ", Lot Size = ", lotSize, ", Stop Loss = ", stopLoss, ", Take Profit = ", takeProfit);
+        Alert("Order #", OrderTicket(), ": Type = ", orderTypeStr, ", Price = ", price, ", Lot Size = ", lotSize, ", Stop Loss = ", stopLoss, ", Take Profit = ", takeProfit, ", Risk ($) = ", riskDollars, ", Profit ($) = ", profitDollars);
       }
     }
   }
