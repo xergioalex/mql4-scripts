@@ -21,9 +21,9 @@ class ChartInfo
 
 void OnStart() {
   // Clear previous alerts by adding empty alerts
-  for (int k = 0; k < 30; k++) {
-    Alert("");
-  }
+  //for (int k = 0; k < 30; k++) {
+  //  Alert("");
+  //}
   
    long chartID = ChartID();
    string symbol = ChartSymbol(chartID); // Get the chart symbol
@@ -34,16 +34,16 @@ void OnStart() {
    info.symbol = symbol;
    info.indicatorsTotal = ChartIndicatorsTotal(chartID, 0);
    
-   Alert("Symbol = ", info.symbol, ", Chart ID = ", info.chartID, ", Indicators: ", info.indicatorsTotal);
+   Print("Symbol = ", info.symbol, ", Chart ID = ", info.chartID, ", Indicators: ", info.indicatorsTotal);
     
    string templateName = info.symbol + ".tpl";
    if (ChartApplyTemplate(info.chartID, templateName)) {
-      Alert("Template ", templateName, " applied successfully to chart ", info.chartID);
+      Print("Template ", templateName, " applied successfully to chart ", info.chartID);
    } else {
-      Alert("Failed to apply template ", templateName, " to chart ", info.chartID);
+      Print("Failed to apply template ", templateName, " to chart ", info.chartID);
    }
-   Alert("#############################");
-   Alert("#############################");
-   Alert("#############################");
+   //Alert("#############################");
+   //Alert("#############################");
+   //Alert("#############################");
 }
 //+------------------------------------------------------------------+

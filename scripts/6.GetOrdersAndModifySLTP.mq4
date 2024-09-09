@@ -37,7 +37,14 @@ void OnStart() {
       double pipValue = MarketInfo(OrderSymbol(), MODE_TICKVALUE);
       double riskDollars = 0.0;
       double profitDollars = 0.0;  
+      double riskPipDiff = 0.0;
       double lotSizePipValue = (lotSize * pipValue);
+      double PIP_VALUE_MULTIPLIER = 0;
+      if (StringFind(OrderSymbol(), "JPY") != -1) {
+        PIP_VALUE_MULTIPLIER = 10;
+      } else {
+        PIP_VALUE_MULTIPLIER = 100000;
+      }
       if (orderType == OP_BUY || orderType == OP_BUYLIMIT || orderType == OP_BUYSTOP) {
         // Adjust Take Profit to ensure risk is 10 USD
         double profitPips = profitDollarsToSet / lotSizePipValue;
@@ -48,8 +55,10 @@ void OnStart() {
           Alert("Error: ", ErrorDescription(GetLastError()));
         }
 
-        riskDollars = (price - stopLoss) * lotSizePipValue;
-        profitDollars = (takeProfit - price) * lotSizePipValue;
+        riskPipDiff = (price - stopLoss);
+        Alert("riskPipDiff: ", riskPipDiff * PIP_VALUE_MULTIPLIER);
+        riskDollars = (riskPipDiff * lotSizePipValue) * PIP_VALUE_MULTIPLIER;
+        profitDollars = ((takeProfit - price) * lotSizePipValue) * PIP_VALUE_MULTIPLIER;
       } else if (orderType == OP_SELL || orderType == OP_SELLLIMIT || orderType == OP_SELLSTOP) {
         // Adjust Take Profit to ensure risk is 10 USD
         double profitPips = profitDollarsToSet / lotSizePipValue;
@@ -60,8 +69,10 @@ void OnStart() {
           Alert("Error: ", ErrorDescription(GetLastError()));
         }
 
-        riskDollars = (stopLoss - price) * lotSizePipValue;
-        profitDollars = (price - takeProfit) * lotSizePipValue;
+        riskPipDiff = (stopLoss - price);
+        Alert("riskPipDiff: ", riskPipDiff * PIP_VALUE_MULTIPLIER);
+        riskDollars = (riskPipDiff * lotSizePipValue) * PIP_VALUE_MULTIPLIER;
+        profitDollars = ((price - takeProfit) * lotSizePipValue) * PIP_VALUE_MULTIPLIER;
       }
       
       string orderTypeStr;
@@ -89,7 +100,7 @@ void OnStart() {
           orderTypeStr = "Unknown";
       }
       
-      Alert("Order #", OrderTicket(), ": Type = ", orderTypeStr, ", Price = ", price, ", Lot Size = ", lotSize, ", Stop Loss = ", stopLoss, ", Take Profit = ", takeProfit, ", Risk ($) = ", riskDollars, ", Profit ($) = ", profitDollars);
+      Alert("Order #", OrderTicket(), ": Symbol = ", Symbol(), ", Type = ", orderTypeStr, ", Price = ", price, ", Lot Size = ", lotSize, ", Stop Loss = ", stopLoss, ", Take Profit = ", takeProfit, ", Risk ($) = ", riskDollars, ", Profit ($) = ", profitDollars);
     }
   }
 }

@@ -43,22 +43,22 @@ void OnStart() {
   
   // Iterate over the array and display the information
   for (int i = 0; i < ArraySize(chartInfo); i++) {
-    Alert("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal);
+    Print("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal);
     
     if (chartInfo[i].indicatorsTotal >= 3) {
        // Load the template with the same name as the symbol
        string templateName = chartInfo[i].symbol + ".tpl";
        if (ChartApplyTemplate(chartInfo[i].chartID , templateName)) {
-         Alert("Template ", templateName, " applied successfully to chart ", chartInfo[i].chartID);
+         Print("Template ", templateName, " applied successfully to chart ", chartInfo[i].chartID);
        } else {
-         Alert("Failed to apply template ", templateName, " to chart ", chartInfo[i].chartID);
+         Print("Failed to apply template ", templateName, " to chart ", chartInfo[i].chartID);
        }
     }
   }
   
-  Alert("Total open charts...: ", chartIndex);
-  Alert("#############################");
-  Alert("#############################");
-  Alert("#############################");
+  //Alert("Total open charts...: ", chartIndex);
+  //Alert("#############################");
+  //Alert("#############################");
+  //Alert("#############################");
 }
 //+------------------------------------------------------------------+
