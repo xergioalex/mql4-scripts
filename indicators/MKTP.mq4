@@ -130,7 +130,7 @@ input group "Main"
 input string ____Main = "================";
 input session_period Session                 = Daily;
 input datetime       StartFromDate           = __DATE__;        // StartFromDate: lower priority.
-input bool           StartFromCurrentSession = false;            // StartFromCurrentSession: higher priority.
+bool           StartFromCurrentSession = false;            // StartFromCurrentSession: higher priority.
 input int            SessionsToCount         = 6;               // SessionsToCount: Number of sessions to count Market Profile.
 input bool           SeamlessScrollingMode   = false;           // SeamlessScrollingMode: Show sessions on current screen.
 input bool           EnableDevelopingPOC     = true;           // Enable Developing POC
@@ -176,7 +176,7 @@ input bool           RightToLeft              = false;          // RightToLeft: 
 input group "Performance"
 input string ____Performance = "================";
 input int            PointMultiplier          = 20;      // PointMultiplier: higher value = fewer objects. 0 - adaptive.
-input int            ThrottleRedraw           = 60;      // ThrottleRedraw: delay (in seconds) for updating Market Profile.
+input int            ThrottleRedraw           = 0;      // ThrottleRedraw: delay (in seconds) for updating Market Profile.
 input bool           DisableHistogram         = false;  // DisableHistogram: do not draw profile, VAH, VAL, and POC still visible.
 
 input group "Alerts"
@@ -444,6 +444,30 @@ int OnInit()
 
     ValueAreaPercentage_double = ValueAreaPercentage * 0.01;
 
+    // Create a button in the top right corner of the screen
+    string buttonName = "RefreshMarketButton";
+    int buttonWidth = 120;
+    int buttonHeight = 30;
+
+    // ------------------------------------
+    
+    // Create the button
+    if (!ObjectCreate(0, buttonName, OBJ_BUTTON, 0, 0, 0))
+    {
+        Print("Error creating button: ", GetLastError());
+        return INIT_FAILED;
+    }
+
+    // Set button properties
+    ObjectSetInteger(0, buttonName, OBJPROP_XSIZE, buttonWidth);
+    ObjectSetInteger(0, buttonName, OBJPROP_YSIZE, buttonHeight);
+    ObjectSetInteger(0, buttonName, OBJPROP_CORNER, CORNER_LEFT_UPPER); // Change to left upper corner
+    ObjectSetInteger(0, buttonName, OBJPROP_XDISTANCE, 320); // Adjust distance from the left edge
+    ObjectSetInteger(0, buttonName, OBJPROP_YDISTANCE, 5); // Distance from the top edge
+    ObjectSetString(0, buttonName, OBJPROP_TEXT, "Refresh MKTP");
+    ObjectSetInteger(0, buttonName, OBJPROP_COLOR, Black);
+    ObjectSetInteger(0, buttonName, OBJPROP_HIDDEN, true);
+
     // Initialization successful
     return INIT_SUCCEEDED;
 }
@@ -462,6 +486,9 @@ void OnDeinit(const int reason)
         }
     }
     else ObjectCleanup();
+
+    // Delete the button on deinitialization
+    ObjectDelete(0, "RefreshMarketButton");
 }
 
 //+------------------------------------------------------------------+
@@ -479,11 +506,15 @@ int OnCalculate(const int rates_total,
                 const int& spread[]
                )
 {
+    Print("OnCalculate called 0....");
+    Print("StartFromCurrentSession: ", StartFromCurrentSession);
     if (InitFailed)
     {
         if (!DisableAlertsOnWrongTimeframes) Print("Initialization failed. Please see the alert message for details.");
         return 0;
     }
+
+    Print("OnCalculate called 1....");
 
     // New bars arrived?
     if (((EnableDevelopingPOC) || (EnableDevelopingVAHVAL)) && (rates_total - prev_calculated > 1) && (CleanedUpOn != rates_total))
@@ -519,6 +550,7 @@ int OnCalculate(const int rates_total,
     }
     else if (StartFromCurrentSession) StartDate = Time[0];
     else StartDate = StartFromDate;
+    Print("StartDate: ", StartDate);
 
     // Adjust date if Ignore_Saturday_Sunday is set.
     if (SaturdaySunday == Ignore_Saturday_Sunday)
@@ -1083,19 +1115,23 @@ void ObjectCleanup(string rectangle_prefix = "")
     ObjectsDeleteAll(0, rectangle_prefix + "VA_RightSide" + Suffix, 0, OBJ_TREND);
     ObjectsDeleteAll(0, rectangle_prefix + "VA_Top" + Suffix, 0, OBJ_TREND);
     ObjectsDeleteAll(0, rectangle_prefix + "VA_Bottom" + Suffix, 0, OBJ_TREND);
+    Print("ObjectCleanup called 0 ...");
     if (ShowValueAreaRays != None)
     {
+        Print("ObjectCleanup called 1 ...");
         // Delete all trendlines with set prefix.
         ObjectsDeleteAll(0, rectangle_prefix + "Value Area HighRay" + Suffix, 0, OBJ_TREND);
         ObjectsDeleteAll(0, rectangle_prefix + "Value Area LowRay" + Suffix, 0, OBJ_TREND);
     }
     if (ShowMedianRays != None)
     {
+        Print("ObjectCleanup called 2 ...");
         // Delete all trendlines with set prefix.
         ObjectsDeleteAll(0, rectangle_prefix + "Median Ray" + Suffix, 0, OBJ_TREND);
     }
     if (ShowKeyValues)
     {
+        Print("ObjectCleanup called 3 ...");
         // Delete all text labels with set prefix.
         ObjectsDeleteAll(0, rectangle_prefix + "VAH" + Suffix, 0, OBJ_TEXT);
         ObjectsDeleteAll(0, rectangle_prefix + "VAL" + Suffix, 0, OBJ_TEXT);
@@ -1103,16 +1139,19 @@ void ObjectCleanup(string rectangle_prefix = "")
     }
     if (ShowSinglePrint)
     {
+        Print("ObjectCleanup called 4 ...");
         // Delete all Single Print marks.
         ObjectsDeleteAll(0, rectangle_prefix + "MPSP" + Suffix, 0, OBJ_RECTANGLE);
     }
     if (SinglePrintRays)
     {
+        Print("ObjectCleanup called 5 ...");
         // Delete all Single Print rays.
         ObjectsDeleteAll(0, rectangle_prefix + "MPSPR" + Suffix, 0, OBJ_TREND);
     }
     if (AlertArrows)
     {
+        Print("ObjectCleanup called 6 ...");
         DeleteArrowsByPrefix(rectangle_prefix);
     }
 }
@@ -2422,6 +2461,7 @@ int CalculateProperColor()
 
 void OnTimer()
 {
+    Print("OnTimer called...");
     if (GetTickCount() - LastRecalculationTime < 500) return; // Do not recalculate on timer if less than 500 ms passed.
     if (HideRaysFromInvisibleSessions) CheckRays(); // Should be checked regularly if the input parameter requires ray hiding/unhiding.
 
@@ -2853,6 +2893,7 @@ void RemoveSinglePrintRay(const double price, const int sessionstart, const stri
 // Called only when RightToLeft is on to update the right-most session.
 void RedrawLastSession()
 {
+    Print("RedrawLastSession called...");
     if (SeamlessScrollingMode)
     {
         int last_visible_bar = WindowFirstVisibleBar() - WindowBarsPerChart() + 1;
@@ -3085,6 +3126,24 @@ void DistributeBetweenTwoBuffers(double &buff1[], double &buff2[], int bar, doub
 //+------------------------------------------------------------------+
 void OnChartEvent(const int id, const long& lparam, const double& dparam, const string& sparam)
 {
+    // Check if the event is a click on the button
+    if (id == CHARTEVENT_OBJECT_CLICK && sparam == "RefreshMarketButton")
+    {
+        // Print the event details for debugging
+        Print("Event ID: ", id, ", sparam: ", sparam);
+
+        // Toggle the value of StartFromCurrentSession
+        StartFromCurrentSession = !StartFromCurrentSession;
+        FirstRunDone = false;
+        Print("StartFromCurrentSession is now: ", StartFromCurrentSession);
+
+        ObjectCleanup();
+
+        // Force a chart redraw to trigger OnCalculate
+        ChartRedraw();
+    }
+    
+    
     if (Session != Rectangle) return;
     if (id == CHARTEVENT_KEYDOWN)
     {

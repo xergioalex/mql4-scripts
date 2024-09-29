@@ -15,11 +15,6 @@
 //+------------------------------------------------------------------+
 
 void OnStart() {
-  // Clear previous alerts by adding empty alerts
-  for (int k = 0; k < 30; k++) {
-    Alert("");
-  }
-
   int ordersTotal = OrdersTotal();
   Alert("OrderTotal: ", ordersTotal);
   double profitDollarsToSet = 10;
