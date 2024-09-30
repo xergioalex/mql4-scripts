@@ -5,9 +5,35 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, XergioAleX."
 #property link      "https://www.xergioalex.com"
-#property version   "1.00"
+#property version       "1.00"
 #property strict
+#property description   "This script will set breakeven on all trades filtered according to your preferences."
+#property description   ""
+#property description   "WARNING: Use this software at your own risk."
+#property description   "The creator of this script cannot be held responsible for any damage or loss."
+#property description   ""
+#property description   "Find More on XergioAleX.com"
+#property strict
+#property icon   "\\Icons\\indicator-icon.ico"
+#property show_inputs
+
 #include <stdlib.mqh>
+
+enum ENUM_ORDER_TYPES {
+    ALL_ORDERS = 1, // ALL ORDERS
+    ONLY_BUY = 2,   // BUY ONLY
+    ONLY_SELL = 3   // SELL ONLY
+};
+
+input bool OnlyCurrentSymbol = true; // Only current chart's symbol
+input ENUM_ORDER_TYPES OrderTypeFilter = ALL_ORDERS; // Type of orders to move SL to BE
+input int MinimumProfit = 0;          // Minimum current profit in points to apply BE
+input int AdditionalProfit = 0;       // Additional profit in points to add to BE
+input bool OnlyMagicNumber = false;   // Only orders matching the magic number
+input int MagicNumber = 0;            // Matching magic number
+input bool OnlyWithComment = false;   // Only orders with the following comment
+input string MatchingComment = "";    // Matching comment
+input int PercentageOfProfitToBreakEven = 30; // Percentage of profit to break even
 
 // Start program to start the function.
 void OnStart() {
@@ -101,18 +127,22 @@ double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, 
     return false;
   } 
 
+  // If the profit is less than half of the risk, we don't apply the break even
+  if (profitDollars > 0 && profitDollars < (riskDollars / 4)) {
+    return false;
+  }
+
   // Depending on the current profit, we will calculate the break even in dollars
-  double PERCENTAGE_OF_PROFIT_TO_BREAK_EVEN = 40;
   if (currentProfitDollars > 0) {
     double positiveProfitPercentage = (currentProfitDollars * 100) / profitDollars;
     Print("Positive Profit Percentage: ", positiveProfitPercentage);
-    if (MathAbs(positiveProfitPercentage) > 40) {
+    if (MathAbs(positiveProfitPercentage) > PercentageOfProfitToBreakEven) {
       return true;
     }
   } else {
     double negativeProfitPercentage = (currentProfitDollars * 100) / riskDollars;
     Print("Negative Profit Percentage: ", negativeProfitPercentage);
-    if (MathAbs(negativeProfitPercentage) > 40) {
+    if (MathAbs(negativeProfitPercentage) > PercentageOfProfitToBreakEven) {
       return true;
     }
   }
@@ -129,11 +159,10 @@ double CalcBreakEvenDollars(double orderCommission, double orderSwap) {
 }
 
 bool ApplyOrderBreakEven() {
-  // Get order details
+  // Get order type
   int orderType = OrderType();
-  if (!(orderType == OP_BUY || orderType == OP_SELL)) {
-    return false;
-  }
+
+  // Get order details
   int orderTicket = OrderTicket();
   string orderSymbol = OrderSymbol();
   double orderOpenPrice = OrderOpenPrice();
@@ -143,6 +172,28 @@ bool ApplyOrderBreakEven() {
   datetime orderExpiration = OrderExpiration();
   double orderCommission = OrderCommission();
   double orderSwap = OrderSwap();
+  int orderMagicNumber = OrderMagicNumber();
+  string orderComment = OrderComment();
+  double currentProfitDollars = OrderProfit();
+
+  // Check if the order matches the filter and if not, skip the order and move to the next one.
+  if (!(orderType == OP_BUY || orderType == OP_SELL)) return false;
+  if ((OrderTypeFilter == ONLY_SELL) && (orderType == OP_BUY)) return false;
+  if ((OrderTypeFilter == ONLY_BUY)  && (orderType == OP_SELL)) return false;
+  if ((OnlyCurrentSymbol) && (orderSymbol != Symbol())) return false;
+  if ((OnlyMagicNumber) && (orderMagicNumber != MagicNumber)) return false;
+  if ((OnlyWithComment) && (StringCompare(orderComment, MatchingComment) != 0)) return false;
+
+  // Verify if the order Break Even was already applied
+  if (orderType == OP_BUY) {
+    if (orderStopLoss > orderOpenPrice) {
+      return false;
+    }
+  } else if (orderType == OP_SELL) {
+    if (orderOpenPrice > orderStopLoss) {
+      return false;
+    }
+  }
   
   // Calculate risk and profit in dollars
   double pipValue = MarketInfo(orderSymbol, MODE_TICKVALUE);
@@ -157,18 +208,11 @@ bool ApplyOrderBreakEven() {
   double lotSizePipValue = (orderLotsSize * pipValue);
   
   if (orderType == OP_BUY) {
-    if (orderStopLoss > orderOpenPrice) {
-      return false;
-    }
-
     // Calculate risk and profit in pips and dollars
     double riskPipDiff = (orderOpenPrice - orderStopLoss);
     double profitPipDiff = (orderTakeProfit - orderOpenPrice);
     riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
     profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
-    
-    // Calculate current profit in dollars
-    double currentProfitDollars = OrderProfit();
 
     // Verify if we should apply break even to the order
     if (!ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
@@ -185,18 +229,11 @@ bool ApplyOrderBreakEven() {
       orderTakeProfit = orderOpenPrice + (profitPips * Point);
     }
   } else if (orderType == OP_SELL) {
-    if (orderOpenPrice > orderStopLoss) {
-      return false;
-    }
-
     // Calculate risk and profit in pips and dollars
     double riskPipDiff = (orderStopLoss - orderOpenPrice);
     double profitPipDiff = (orderOpenPrice - orderTakeProfit);
     riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
     profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
-
-    // Calculate current profit in dollars
-    double currentProfitDollars = OrderProfit();
 
     // Verify if we should apply break even to the order
     if (!ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
@@ -216,7 +253,7 @@ bool ApplyOrderBreakEven() {
 
   // Modify order
   if (!OrderModify(orderTicket, orderOpenPrice, orderStopLoss, orderTakeProfit, orderExpiration, clrNONE)) {
-    Print("Error on Buy Order: ", ErrorDescription(GetLastError()));
+    Print("Error modifying order: ", ErrorDescription(GetLastError()));
     return false;
   }
   
