@@ -68,16 +68,11 @@ void StartBreakEvenStrategy() {
 
 double GetPipValueMultiplier() {
   // Return pip value multiplier based on the number of digits
-  switch(Digits) {
-      case 5:
-        return 100000;
-      case 3:
-        return 1000;
-      case 2:
-        return 100;
-      default :
-        return 0;
-    }
+  if (Digits == 5 || Digits == 3 || Digits == 2) {
+    return MathPow(10, Digits);
+  } else {
+    return 0;
+  }
 }
 
 string GetOrderTypeStr(int orderType) {
@@ -102,30 +97,21 @@ string GetOrderTypeStr(int orderType) {
 
 double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, double currentProfitDollars) {
   // Verify if we can calculate the break even
-  Print("ShouldApplyBreakEvenToTheOrder: 0");
-  Print("riskDollars: ", riskDollars);
-  Print("profitDollars: ", profitDollars);
-  Print("currentProfitDollars: ", currentProfitDollars);
   if ((!riskDollars > 0 && profitDollars > 0 && currentProfitDollars != 0)) {
-    Print("ShouldApplyBreakEvenToTheOrder: 1");
     return false;
   } 
-
-  Print("ShouldApplyBreakEvenToTheOrder: 2");
 
   // Depending on the current profit, we will calculate the break even in dollars
   double PERCENTAGE_OF_PROFIT_TO_BREAK_EVEN = 40;
   if (currentProfitDollars > 0) {
-    Print("ShouldApplyBreakEvenToTheOrder: 3");
     double positiveProfitPercentage = (currentProfitDollars * 100) / profitDollars;
-    Print("positiveProfitPercentage: ", positiveProfitPercentage);
+    Print("Positive Profit Percentage: ", positiveProfitPercentage);
     if (MathAbs(positiveProfitPercentage) > 40) {
       return true;
     }
   } else {
-    Print("ShouldApplyBreakEvenToTheOrder: 4");
     double negativeProfitPercentage = (currentProfitDollars * 100) / riskDollars;
-    Print("negativeProfitPercentage: ", negativeProfitPercentage);
+    Print("Negative Profit Percentage: ", negativeProfitPercentage);
     if (MathAbs(negativeProfitPercentage) > 40) {
       return true;
     }
@@ -135,7 +121,7 @@ double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, 
 
 double CalcBreakEvenDollars(double orderCommission, double orderSwap) {
   // Calculate break even in dollars
-  double breakEvenDollars = (orderCommission + (orderCommission / 4)) + orderSwap;
+  double breakEvenDollars = (orderCommission + (orderCommission * 0.10)) + orderSwap;
   if (breakEvenDollars > 0) {
     breakEvenDollars = orderCommission;
   }
@@ -180,23 +166,15 @@ bool ApplyOrderBreakEven() {
     double profitPipDiff = (orderTakeProfit - orderOpenPrice);
     riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
     profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
-
-    // Get current price
-    double orderCurrentPrice = Bid;
     
     // Calculate current profit in dollars
     double currentProfitDollars = OrderProfit();
-    Print("Current Order Profit: ", currentProfitDollars);
-    Print("Profit Dollars: ", profitDollars);
-    Print("Risk Dollars: ", riskDollars);
 
     // Verify if we should apply break even to the order
     if (!ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
       Print("Should NOT apply break even to the order");
       return false;
     }
-
-    Print("Should apply break even to the order");
 
     // Calculate break even in dollars
     double breakEvenDollars = CalcBreakEvenDollars(orderCommission, orderSwap);
@@ -217,20 +195,14 @@ bool ApplyOrderBreakEven() {
     riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
     profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
 
-    // Get current price
-    double orderCurrentPrice = Ask;
-
     // Calculate current profit in dollars
     double currentProfitDollars = OrderProfit();
-    Print("Order Profit: ", currentProfitDollars);
 
     // Verify if we should apply break even to the order
     if (!ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
       Print("Should NOT apply break even to the order");
       return false;
     }
-
-    Print("Should apply break even to the order");
     
     // Calculate break even in dollars
     double breakEvenDollars = CalcBreakEvenDollars(orderCommission, orderSwap);
