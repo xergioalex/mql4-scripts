@@ -27,13 +27,11 @@ enum ENUM_ORDER_TYPES {
 
 input bool OnlyCurrentSymbol = true; // Only current chart's symbol
 input ENUM_ORDER_TYPES OrderTypeFilter = ALL_ORDERS; // Type of orders to move SL to BE
-input int MinimumProfit = 0;          // Minimum current profit in points to apply BE
-input int AdditionalProfit = 0;       // Additional profit in points to add to BE
 input bool OnlyMagicNumber = false;   // Only orders matching the magic number
 input int MagicNumber = 0;            // Matching magic number
 input bool OnlyWithComment = false;   // Only orders with the following comment
 input string MatchingComment = "";    // Matching comment
-input int PercentageOfProfitToBreakEven = 30; // Percentage of profit to break even
+input int PercentageOfProfitToBreakEven = 20; // Percentage of profit to break even
 
 // Start program to start the function.
 void OnStart() {
