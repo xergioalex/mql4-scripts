@@ -21,21 +21,37 @@
 #include <stdlib.mqh>
 
 enum ENUM_CLOSE_ORDER_TYPES {
-    ALL_ORDERS = 1, // ALL ORDERS
+    ALL_ORDERS_PENDING_AND_MARKET = 1, // ALL ORDERS (PENDING AND MARKET)
     ONLY_PENDING_ORDERS = 2,   // ONLY PENDING ORDERS
     ONLY_MARKET_ORDERS = 3   // ONLY MARKET ORDERS
 };
 
 input bool CloseOnlyCurrentSymbol = true; // Only current chart's symbol
-input ENUM_CLOSE_ORDER_TYPES CloseOrderTypeFilter = ALL_ORDERS; // Type of orders to move SL to BE
+input ENUM_CLOSE_ORDER_TYPES CloseOrderTypeFilter = ALL_ORDERS_PENDING_AND_MARKET; // Type of orders to close
 
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
 //+------------------------------------------------------------------+
 
 void OnStart() {
+  Print("#######################################");
+  Print("##### • START CLOSE ALL ORDERS • #####");
+  Print("");
+  
+  CloseAllOrdersStrategy();
+
+  Print("");
+  Print("##### • END CLOSE ALL ORDERS • #####");
+  Print("#####################################");
+}
+
+
+void CloseAllOrdersStrategy() {
     // Check if there are any open orders
     int ordersTotal = OrdersTotal();
+    int marketOrdersTotal = 0;
+    int pendingOrdersTotal = 0;
+    Print("Total orders: ", ordersTotal);
     if (ordersTotal == 0) {
         Print("No orders found to close");
         return;
@@ -53,6 +69,13 @@ void OnStart() {
 
         // Get the type of the selected order
         int orderType = OrderType();
+
+        if (orderType == OP_BUY || orderType == OP_SELL) {
+            marketOrdersTotal++;
+        }
+        if (orderType == OP_BUYLIMIT || orderType == OP_SELLLIMIT || orderType == OP_BUYSTOP || orderType == OP_SELLSTOP) {
+            pendingOrdersTotal++;
+        }
 
         if ((CloseOnlyCurrentSymbol) && (OrderSymbol() != Symbol())) continue;
         if ((CloseOrderTypeFilter == ONLY_PENDING_ORDERS) && (orderType == OP_BUY || orderType == OP_SELL)) continue;
@@ -96,10 +119,13 @@ void OnStart() {
         }
     }
 
+    Print("Total market orders: ", marketOrdersTotal);
+    Print("Total pending orders: ", pendingOrdersTotal);
+
     if (errorsCount == 0) {
         Print("All pending orders have been closed");
     } else {
-        Print("Total errors: ", errorsCount);
+        Print("Some orders were not closed due to errors: ", errorsCount);
     }
 }
 //+------------------------------------------------------------------+

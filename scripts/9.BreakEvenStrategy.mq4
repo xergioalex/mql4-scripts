@@ -31,7 +31,8 @@ input bool OnlyMagicNumber = false;   // Only orders matching the magic number
 input int MagicNumber = 0;            // Matching magic number
 input bool OnlyWithComment = false;   // Only orders with the following comment
 input string MatchingComment = "";    // Matching comment
-input int PercentageOfProfitToBreakEven = 20; // Percentage of profit to break even
+input double PercentageOfPositiveProfitToBreakEven = 30; // Percentage of positive profit to break even
+input double PercentageOfNegativeProfitToBreakEven = 40; // Percentage of negative profit to break even
 
 // Start program to start the function.
 void OnStart() {
@@ -62,7 +63,10 @@ void StartBreakEvenStrategy() {
 
   // Get total orders
   int ordersTotal = OrdersTotal();
-  Print("Orders total: ", ordersTotal);
+  int marketOrdersTotal = 0;
+  int marketOrdersModifiedTotal = 0;
+  Print("Total orders: ", ordersTotal);
+
 
   // If no orders found, exit
   if (ordersTotal == 0) {
@@ -70,7 +74,6 @@ void StartBreakEvenStrategy() {
     return;
   }
 
-  int ordersModified = 0;
   double profitDollarsToSet = 10;
   // Loop through all orders
   for (int i = 0; i < ordersTotal; i++) {
@@ -80,13 +83,20 @@ void StartBreakEvenStrategy() {
       continue;
     }
 
-    // Apply break even strategy to the order
-    if (ApplyOrderBreakEven()) {
-      ordersModified++;
+    // Get order type
+    int orderType = OrderType();
+    if (orderType == OP_BUY || orderType == OP_SELL) {
+        marketOrdersTotal++;
+        // Apply break even strategy to the order
+        if (ApplyOrderBreakEven(orderType)) {
+            marketOrdersModifiedTotal++;
+        }
     }
+    
   }
 
-  Print("Total orders modified: ", ordersModified);
+  Print("Total market orders: ", marketOrdersTotal);
+  Print("Total market orders modified: ", marketOrdersModifiedTotal);
 }
 
 
@@ -134,13 +144,13 @@ double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, 
   if (currentProfitDollars > 0) {
     double positiveProfitPercentage = (currentProfitDollars * 100) / profitDollars;
     Print("Positive Profit Percentage: ", positiveProfitPercentage);
-    if (MathAbs(positiveProfitPercentage) > PercentageOfProfitToBreakEven) {
+    if (MathAbs(positiveProfitPercentage) > PercentageOfPositiveProfitToBreakEven) {
       return true;
     }
   } else {
     double negativeProfitPercentage = (currentProfitDollars * 100) / riskDollars;
     Print("Negative Profit Percentage: ", negativeProfitPercentage);
-    if (MathAbs(negativeProfitPercentage) > PercentageOfProfitToBreakEven) {
+    if (MathAbs(negativeProfitPercentage) > PercentageOfNegativeProfitToBreakEven) {
       return true;
     }
   }
@@ -156,10 +166,7 @@ double CalcBreakEvenDollars(double orderCommission, double orderSwap) {
   return MathAbs(breakEvenDollars);
 }
 
-bool ApplyOrderBreakEven() {
-  // Get order type
-  int orderType = OrderType();
-
+bool ApplyOrderBreakEven(int orderType) {
   // Get order details
   int orderTicket = OrderTicket();
   string orderSymbol = OrderSymbol();
