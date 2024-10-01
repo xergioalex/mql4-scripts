@@ -231,6 +231,9 @@ bool ApplyOrderBreakEven(int orderType) {
         orderTakeProfit = orderOpenPrice + (profitPips * Point);
       }
     } else {
+      if (resultError != "") {
+        Print(resultError);
+      }
       resultError = "i) Should NOT apply break even to the order";
     }
   } else if (orderType == OP_SELL) {
@@ -256,6 +259,9 @@ bool ApplyOrderBreakEven(int orderType) {
         orderTakeProfit = orderOpenPrice - (profitPips * Point);
       }
     } else {
+      if (resultError != "") {
+        Print(resultError);
+      }
       resultError = "i) Should NOT apply break even to the order";
     }
   }
