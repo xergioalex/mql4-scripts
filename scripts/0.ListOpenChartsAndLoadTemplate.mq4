@@ -13,7 +13,7 @@
 
 class ChartInfo
   {
-   public:
+    public:
       long chartID;
       string symbol;
       int indicatorsTotal;
@@ -46,8 +46,17 @@ void OnStart() {
     Print("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal);
     
     // Load the template with the same name as the symbol
-    string templateName = chartInfo[i].symbol + ".tpl";
-    if (ChartApplyTemplate(chartInfo[i].chartID , templateName)) {
+    string templateName = chartInfo[i].symbol;
+    if (StringFind(templateName, ".") != -1) {
+      templateName = templateName + "tpl";
+    } else {
+      templateName = templateName + ".tpl";
+    }
+    if (StringFind(templateName, "SPX500") != -1) {
+      templateName = "US500.tpl";
+    }
+    
+    if (ChartApplyTemplate(chartInfo[i].chartID, templateName)) {
       Print("Template ", templateName, " applied successfully to chart ", chartInfo[i].chartID);
     } else {
       Print("Failed to apply template ", templateName, " to chart ", chartInfo[i].chartID);

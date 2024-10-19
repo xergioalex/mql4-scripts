@@ -36,7 +36,16 @@ void OnStart() {
    
    Print("Symbol = ", info.symbol, ", Chart ID = ", info.chartID, ", Indicators: ", info.indicatorsTotal);
     
-   string templateName = info.symbol + ".tpl";
+   string templateName = info.symbol;
+   if (StringFind(templateName, ".") != -1) {
+      templateName = templateName + "tpl";
+   } else {
+      templateName = templateName + ".tpl";
+   }
+   if (StringFind(templateName, "SPX500") != -1) {
+      templateName = "US500.tpl";
+   }
+   
    if (ChartSaveTemplate(info.chartID, templateName)) {
       Print("Template ", templateName, " saved successfully to chart ", info.chartID);
    } else {
