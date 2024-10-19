@@ -17,6 +17,7 @@ class ChartInfo
       long chartID;
       string symbol;
       int indicatorsTotal;
+      bool isIntraday;
   };
 
 void OnStart() {
@@ -32,6 +33,14 @@ void OnStart() {
     info.chartID = chartID;
     info.symbol = symbol;
     info.indicatorsTotal = ChartIndicatorsTotal(chartID, 0);
+    info.isIntraday = false;
+
+    for (int i = 0; i < info.indicatorsTotal; i++) {
+      string indicatorName = ChartIndicatorName(info.chartID, 0, i);
+      if (StringFind(indicatorName, "Intraday") != -1) {
+         info.isIntraday = true;
+      }
+   }
     
     // Store the object in the array
     ArrayResize(chartInfo, ArraySize(chartInfo) + 1);
@@ -43,7 +52,7 @@ void OnStart() {
   
   // Iterate over the array and display the information
   for (int i = 0; i < ArraySize(chartInfo); i++) {
-    Print("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal);
+    Print("Chart ", i + 1, ": Symbol = ", chartInfo[i].symbol, ", Chart ID = ", chartInfo[i].chartID, ", Indicators: ", chartInfo[i].indicatorsTotal, ", Intraday: ", chartInfo[i].isIntraday);
     
     // Load the template with the same name as the symbol
     string templateName = chartInfo[i].symbol;
@@ -55,6 +64,10 @@ void OnStart() {
     if (StringFind(templateName, "SPX500") != -1) {
       templateName = "US500.tpl";
     }
+
+    if (chartInfo[i].isIntraday) {
+      templateName = "Intraday" + templateName;
+   }
     
     if (ChartApplyTemplate(chartInfo[i].chartID, templateName)) {
       Print("Template ", templateName, " applied successfully to chart ", chartInfo[i].chartID);

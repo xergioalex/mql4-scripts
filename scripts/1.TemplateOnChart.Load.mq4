@@ -17,14 +17,10 @@ class ChartInfo
       long chartID;
       string symbol;
       int indicatorsTotal;
+      bool isIntraday;
   };
 
 void OnStart() {
-  // Clear previous alerts by adding empty alerts
-  //for (int k = 0; k < 30; k++) {
-  //  Alert("");
-  //}
-  
    long chartID = ChartID();
    string symbol = ChartSymbol(chartID); // Get the chart symbol
     
@@ -33,8 +29,16 @@ void OnStart() {
    info.chartID = chartID;
    info.symbol = symbol;
    info.indicatorsTotal = ChartIndicatorsTotal(chartID, 0);
+   info.isIntraday = false;
+
+   for (int i = 0; i < info.indicatorsTotal; i++) {
+      string indicatorName = ChartIndicatorName(info.chartID, 0, i);
+      if (StringFind(indicatorName, "Intraday") != -1) {
+         info.isIntraday = true;
+      }
+   }
    
-   Print("Symbol = ", info.symbol, ", Chart ID = ", info.chartID, ", Indicators: ", info.indicatorsTotal);
+   Print("Symbol = ", info.symbol, ", Chart ID = ", info.chartID, ", Indicators: ", info.indicatorsTotal, ", Intraday: ", info.isIntraday);
     
    string templateName = info.symbol;
    if (StringFind(templateName, ".") != -1) {
@@ -45,14 +49,15 @@ void OnStart() {
    if (StringFind(templateName, "SPX500") != -1) {
       templateName = "US500.tpl";
    }
+
+   if (info.isIntraday) {
+      templateName = "Intraday" + templateName;
+   }
    
    if (ChartApplyTemplate(info.chartID, templateName)) {
       Print("Template ", templateName, " applied successfully to chart ", info.chartID);
    } else {
       Print("Failed to apply template ", templateName, " to chart ", info.chartID);
    }
-   //Alert("#############################");
-   //Alert("#############################");
-   //Alert("#############################");
 }
 //+------------------------------------------------------------------+
