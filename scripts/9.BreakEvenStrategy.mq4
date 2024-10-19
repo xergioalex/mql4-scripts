@@ -33,6 +33,8 @@ input bool OnlyWithComment = false;   // Only orders with the following comment
 input string MatchingComment = "";    // Matching comment
 input double PercentageOfPositiveProfitToBreakEven = 30; // Percentage of positive profit to break even
 input double PercentageOfNegativeProfitToBreakEven = 40; // Percentage of negative profit to break even
+double MinimumPercentageToCompare = 4;
+
 
 // Start program to start the function.
 void OnStart() {
@@ -48,7 +50,7 @@ void OnStart() {
 }
 
 
-void StartBreakEvenStrategy() {
+void StartBreakEvenStrategy(bool forceBreakEven = false) {
   // Check if terminal is connected
   if (!TerminalInfoInteger(TERMINAL_CONNECTED)) {
     Print("Not connected to the trading server. Exiting.");
@@ -90,7 +92,7 @@ void StartBreakEvenStrategy() {
     if (orderType == OP_BUY || orderType == OP_SELL) {
         marketOrdersTotal++;
         // Apply break even strategy to the order
-        if (ApplyOrderBreakEven(orderType)) {
+        if (ApplyOrderBreakEven(orderType, forceBreakEven)) {
             marketOrdersModifiedTotal++;
         }
     }
@@ -131,7 +133,7 @@ string GetOrderTypeStr(int orderType) {
   }
 }
 
-double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, double currentProfitDollars) {
+double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, double currentProfitDollars, bool forceBreakEven = false) {
   // Verify if we can calculate the break even
   if ((!riskDollars > 0 && profitDollars > 0 && currentProfitDollars != 0)) {
     Print("ERROR: Dollars values not valid.");
@@ -148,13 +150,21 @@ double ShouldApplyBreakEvenToTheOrder(double riskDollars, double profitDollars, 
   if (currentProfitDollars > 0) {
     double positiveProfitPercentage = (currentProfitDollars * 100) / profitDollars;
     Print("i) % Profit (Positive): ", positiveProfitPercentage);
-    if (MathAbs(positiveProfitPercentage) > PercentageOfPositiveProfitToBreakEven) {
+    double postivePercentageToCompare = PercentageOfPositiveProfitToBreakEven;
+    if (forceBreakEven) {
+      postivePercentageToCompare = MinimumPercentageToCompare;
+    }
+    if (MathAbs(positiveProfitPercentage) > postivePercentageToCompare) {
       return true;
     }
   } else {
     double negativeProfitPercentage = (currentProfitDollars * 100) / riskDollars;
     Print("i) % Profit (Negative): ", negativeProfitPercentage);
-    if (MathAbs(negativeProfitPercentage) > PercentageOfNegativeProfitToBreakEven) {
+    double negativePercentageToCompare = PercentageOfNegativeProfitToBreakEven;
+    if (forceBreakEven) {
+      negativePercentageToCompare = MinimumPercentageToCompare;
+    }
+    if (MathAbs(negativeProfitPercentage) > negativePercentageToCompare) {
       return true;
     }
   }
@@ -170,7 +180,7 @@ double CalcBreakEvenDollars(double orderCommission, double orderSwap) {
   return MathAbs(breakEvenDollars);
 }
 
-bool ApplyOrderBreakEven(int orderType) {
+bool ApplyOrderBreakEven(int orderType, bool forceBreakEven = false) {
   // Get order details
   int orderTicket = OrderTicket();
   string orderSymbol = OrderSymbol();
@@ -221,7 +231,7 @@ bool ApplyOrderBreakEven(int orderType) {
     }
 
     // Verify if we should apply break even to the order
-    if (resultError == "" && ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
+    if (resultError == "" && ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars, forceBreakEven)) {
       // Calculate break even in dollars
       double breakEvenDollars = CalcBreakEvenDollars(orderCommission, orderSwap);
       double profitPips = breakEvenDollars / lotSizePipValue;
