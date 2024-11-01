@@ -49,6 +49,12 @@ void OnStart() {
    if (StringFind(templateName, "SPX500") != -1) {
       templateName = "US500.tpl";
    }
+   if (StringFind(templateName, "DE30") != -1) {
+      templateName = "DE40.tpl";
+   }
+   if (StringFind(templateName, "GER40") != -1) {
+      templateName = "DE40.tpl";
+   }
 
    if (info.isIntraday) {
       templateName = "Intraday" + templateName;
