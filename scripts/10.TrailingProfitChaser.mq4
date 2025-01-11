@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
-//|                                          BreakEvenWithParams.mq4 |
+//|                                         TrailingProfitChaser.mq4 |
 //|                                      Copyright 2024, XergioAleX. |
 //|                                       https://www.xergioalex.com |
 //+------------------------------------------------------------------+
@@ -8,7 +8,9 @@
 #property link      "https://www.xergioalex.com"
 #property version       "1.00"
 #property strict
-#property description   "This script will set breakeven on all trades filtered according to your preferences."
+#property description   "TrailingChaser is an advanced trading algorithm that automatically"
+#property description   "adjusts stop-loss and take-profit levels based on price movement,"
+#property description   "helping you maximize profits while maintaining risk management"
 #property description   ""
 #property description   "WARNING: Use this software at your own risk."
 #property description   "The creator of this script cannot be held responsible for any damage or loss."
@@ -33,26 +35,24 @@ input bool OnlyMagicNumber = false;   // Only orders matching the magic number
 input int MagicNumber = 0;            // Matching magic number
 input bool OnlyWithComment = false;   // Only orders with the following comment
 input string MatchingComment = "";    // Matching comment
-input double PercentageOfPositiveProfitToBreakEven = 30; // Percentage of positive profit to break even
-input double PercentageOfNegativeProfitToBreakEven = 40; // Percentage of negative profit to break even
-double MinimumPercentageToCompare = 4;
-
+input double PercentageOfPositiveProfitToMoveThePrice = 70; // Percentage of positive profit to move the price
+input double PercentageOfProfitToBeIncreased = 20; // Percentage of profit to be increased
 
 // Start program to start the function.
 void OnStart() {
   Print("#######################################");
-  Print("##### • START BREAK EVEN SCRIPT • #####");
+  Print("##### • START TRAILING PROFIT CHASER SCRIPT • #####");
   Print("");
   
-  StartBreakEvenStrategy();
+  StartTrailingProfitChaserStrategy();
 
   Print("");
-  Print("##### • END BREAK EVEN SCRIPT • #####");
+  Print("##### • END TRAILING PROFIT CHASER SCRIPT • #####");
   Print("#####################################");
 }
 
 
-void StartBreakEvenStrategy(bool forceBreakEven = false) {
+void StartTrailingProfitChaserStrategy() {
   // Check if terminal is connected
   if (!TerminalInfoInteger(TERMINAL_CONNECTED)) {
     Print("Not connected to the trading server. Exiting.");
@@ -93,7 +93,7 @@ void StartBreakEvenStrategy(bool forceBreakEven = false) {
     if (orderType == OP_BUY || orderType == OP_SELL) {
         marketOrdersTotal++;
         // Apply break even strategy to the order
-        if (ApplyOrderBreakEven(orderType, forceBreakEven)) {
+        if (ApplyTrailingChaserStrategy(orderType)) {
             marketOrdersModifiedTotal++;
         }
     }
@@ -104,42 +104,16 @@ void StartBreakEvenStrategy(bool forceBreakEven = false) {
   Print("Total market orders modified: ", marketOrdersModifiedTotal);
 }
 
-double ShouldApplyBreakEvenToTheOrder(
-  double riskDollars, double profitDollars, double currentProfitDollars, bool forceBreakEven = false
-) {
-  // Verify if we can calculate the break even
-  if (!(riskDollars > 0 && profitDollars > 0 && currentProfitDollars != 0)) {
+double ShouldTrailingProfitChaserStrategyToTheOrder(double profitDollars, double currentProfitDollars) {
+  // Verify if we can apply the strategy
+  if (!(profitDollars > 0 && currentProfitDollars != 0)) {
     Print("ERROR: Dollars values not valid.");
     return false;
   } 
 
-  // If the profit is less than half of the risk, we don't apply the break even
-  if (profitDollars > 0 && profitDollars < (riskDollars / 4)) {
-    Print("i) Breakeven already applied (Negative).");
-    return false;
-  }
-
-  // Depending on the current profit, we will calculate the break even in dollars
-  if (currentProfitDollars > 0) {
-    double positiveProfitPercentage = (currentProfitDollars * 100) / profitDollars;
-    Print("i) % Profit (Positive): ", positiveProfitPercentage);
-    double postivePercentageToCompare = PercentageOfPositiveProfitToBreakEven;
-    if (forceBreakEven) {
-      postivePercentageToCompare = MinimumPercentageToCompare;
-    }
-    if (MathAbs(positiveProfitPercentage) > postivePercentageToCompare) {
-      return true;
-    }
-  } else {
-    double negativeProfitPercentage = (currentProfitDollars * 100) / riskDollars;
-    Print("i) % Profit (Negative): ", negativeProfitPercentage);
-    double negativePercentageToCompare = PercentageOfNegativeProfitToBreakEven;
-    if (forceBreakEven) {
-      negativePercentageToCompare = MinimumPercentageToCompare;
-    }
-    if (MathAbs(negativeProfitPercentage) > negativePercentageToCompare) {
-      return true;
-    }
+  double profitToMoveThePriceInDollars = profitDollars * (PercentageOfPositiveProfitToMoveThePrice / 100); 
+  if (currentProfitDollars >= profitToMoveThePriceInDollars) {
+    return true;
   }
   return false;
 }
@@ -153,7 +127,7 @@ double CalcBreakEvenDollars(double orderCommission, double orderSwap) {
   return MathAbs(breakEvenDollars);
 }
 
-bool ApplyOrderBreakEven(int orderType, bool forceBreakEven = false) {
+bool ApplyTrailingChaserStrategy(int orderType) {
   // Get order details
   int orderTicket = OrderTicket();
   string orderSymbol = OrderSymbol();
@@ -192,60 +166,54 @@ bool ApplyOrderBreakEven(int orderType, bool forceBreakEven = false) {
   string resultError = "";
   
   if (orderType == OP_BUY) {
-    // Calculate risk and profit in pips and dollars
-    double riskPipDiff = (orderOpenPrice - orderStopLoss);
-    double profitPipDiff = (orderTakeProfit - orderOpenPrice);
-    riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
-    profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
-
-    // Verify if the order Break Even was already applied
-    if (orderStopLoss >= orderOpenPrice) {
-      resultError = "i) Breakeven already applied (Positive).";
-    }
-
-    // Verify if we should apply break even to the order
-    if (resultError == "" && ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars, forceBreakEven)) {
-      // Calculate break even in dollars
-      double breakEvenDollars = CalcBreakEvenDollars(orderCommission, orderSwap);
-      double profitPips = breakEvenDollars / lotSizePipValue;
-      if (currentProfitDollars > 0) {
-        orderStopLoss = orderOpenPrice + (profitPips * Point);
-      } else {
-        orderTakeProfit = orderOpenPrice + (profitPips * Point);
-      }
-    } else {
-      if (resultError != "") {
-        Print(resultError);
-      }
-      resultError = "i) Should NOT apply break even to the order";
-    }
-  } else if (orderType == OP_SELL) {
-    // Calculate risk and profit in pips and dollars
-    double riskPipDiff = (orderStopLoss - orderOpenPrice);
-    double profitPipDiff = (orderOpenPrice - orderTakeProfit);
-    riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
-    profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
-
     // Verify if the order Break Even was already applied
     if (orderOpenPrice >= orderStopLoss) {
-      resultError = "i) Positive breakeven already applied.";
-    }
-
-    // Verify if we should apply break even to the order
-    if (resultError == "" && ShouldApplyBreakEvenToTheOrder(riskDollars, profitDollars, currentProfitDollars)) {
-      // Calculate break even in dollars
-      double breakEvenDollars = CalcBreakEvenDollars(orderCommission, orderSwap);
-      double profitPips = breakEvenDollars / lotSizePipValue;
-      if (currentProfitDollars > 0) {
-        orderStopLoss = orderOpenPrice - (profitPips * Point);
-      } else {
-        orderTakeProfit = orderOpenPrice - (profitPips * Point);
-      }
+      resultError = "i) Strategy can not be applied, the stop loss should be positive.";
     } else {
-      if (resultError != "") {
-        Print(resultError);
+      // Calculate risk and profit in pips and dollars
+      double riskPipDiff = (orderStopLoss - orderOpenPrice);
+      double profitPipDiff = (orderTakeProfit - orderOpenPrice);
+      riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
+      profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
+
+      // Verify if we should apply break even to the order
+      if (resultError == "" && ShouldTrailingProfitChaserStrategyToTheOrder(profitDollars, currentProfitDollars)) {
+        // Calculate positions to move the limits
+        double profitToIncreaseInDollars = profitDollars * (PercentageOfProfitToBeIncreased / 100);
+        double riskDollarsResult = riskDollars + profitToIncreaseInDollars;
+        double profitDollarsResult = profitDollars + profitToIncreaseInDollars;
+
+        // Calculate the new stop loss and take profit
+        double orderStopLossProfitPips = riskDollarsResult / lotSizePipValue;
+        double orderTakeProfitPips = profitDollarsResult / lotSizePipValue;
+        orderStopLoss = orderOpenPrice + (orderStopLossProfitPips * Point);
+        orderTakeProfit = orderOpenPrice + (orderTakeProfitPips * Point);
       }
-      resultError = "i) Should NOT apply break even to the order";
+    }
+  } else if (orderType == OP_SELL) {
+    // Verify if the order Break Even was already applied
+    if (orderOpenPrice <= orderStopLoss) {
+      resultError = "i) Strategy can not be applied, the stop loss should be positive.";
+    } else {
+      // Calculate risk and profit in pips and dollars
+      double riskPipDiff = (orderOpenPrice - orderStopLoss);
+      double profitPipDiff = (orderOpenPrice - orderTakeProfit);
+      riskDollars = (riskPipDiff * lotSizePipValue) * pipValueMultiplier;
+      profitDollars = (profitPipDiff * lotSizePipValue) * pipValueMultiplier;
+
+      // Verify if we should apply break even to the order
+      if (resultError == "" && ShouldTrailingProfitChaserStrategyToTheOrder(profitDollars, currentProfitDollars)) {
+        // Calculate positions to move the limits
+        double profitToIncreaseInDollars = profitDollars * (PercentageOfProfitToBeIncreased / 100);
+        double riskDollarsResult = riskDollars + profitToIncreaseInDollars;
+        double profitDollarsResult = profitDollars + profitToIncreaseInDollars;
+
+        // Calculate the new stop loss and take profit
+        double orderStopLossProfitPips = riskDollarsResult / lotSizePipValue;
+        double orderTakeProfitPips = profitDollarsResult / lotSizePipValue;
+        orderStopLoss = orderOpenPrice - (orderStopLossProfitPips * Point);
+        orderTakeProfit = orderOpenPrice - (orderTakeProfitPips * Point);
+      }
     }
   }
 
@@ -264,3 +232,4 @@ bool ApplyOrderBreakEven(int orderType, bool forceBreakEven = false) {
   }
   return true;
 }
+ 
